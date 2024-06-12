@@ -14,23 +14,23 @@ variable "require_tls" {
 
 variable "engine_family" {
   description = "One of MYSQL or POSTGRESQL"
-  default = "POSTGRESQL"
+  default     = "POSTGRESQL"
 }
 
 variable "idle_client_timeout" {
   description = "The number of seconds a connection to the proxy can be inactive before it disconnects."
-  default = 1800 # 30 minutes
+  default     = 1800 # 30 minutes
 }
 
 variable "secret_arns" {
   description = "List of AWS Secret ARNs containing credentials for use by the proxy."
-  type = list(string)
-  default = []
+  type        = list(string)
+  default     = []
 }
 
 variable "iam_auth" {
   description = "One of REQUIRED or DISABLED"
-  default = "REQUIRED"
+  default     = "REQUIRED"
 }
 
 variable "tags" {
@@ -50,12 +50,12 @@ variable "vpc_id" {
 }
 
 variable "vpc_security_group_ids" {
-  type = list(string)
+  type    = list(string)
   default = []
 }
 
 variable "create_security_group" {
-  type = bool
+  type    = bool
   default = true
 }
 
@@ -100,7 +100,7 @@ variable "max_idle_connections_percent" {
 }
 
 variable "session_pinning_filters" {
-  type = list(string)
+  type    = list(string)
   default = []
 }
 

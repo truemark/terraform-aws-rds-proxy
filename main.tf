@@ -1,8 +1,8 @@
 data "aws_caller_identity" "current" {}
 
 resource "aws_iam_role" "proxy" {
-  count = var.create_proxy ? 1 : 0
-  name = var.name
+  count              = var.create_proxy ? 1 : 0
+  name               = var.name
   assume_role_policy = <<EOF
 {
   "Version": "2012-10-17",
@@ -20,7 +20,7 @@ EOF
 
 data "aws_iam_policy_document" "proxy" {
   statement {
-    sid = "AllowSecret"
+    sid    = "AllowSecret"
     effect = "Allow"
     actions = [
       "secretsmanager:*"
@@ -28,7 +28,7 @@ data "aws_iam_policy_document" "proxy" {
     resources = var.secret_arns
   }
   statement {
-    sid = "AllowList"
+    sid    = "AllowList"
     effect = "Allow"
     actions = [
       "secretsmanager:GetRandomPassword",
@@ -38,7 +38,7 @@ data "aws_iam_policy_document" "proxy" {
     resources = ["*"]
   }
   statement {
-    sid = "AllowDecrypt"
+    sid    = "AllowDecrypt"
     effect = "Allow"
     actions = [
       "kms:Decrypt"
@@ -48,19 +48,19 @@ data "aws_iam_policy_document" "proxy" {
 }
 
 resource "aws_iam_policy" "proxy" {
-  count = var.create_proxy ? 1 : 0
-  name = var.name
+  count  = var.create_proxy ? 1 : 0
+  name   = var.name
   policy = data.aws_iam_policy_document.proxy.json
 }
 
 resource "aws_iam_role_policy_attachment" "proxy" {
-  count = var.create_proxy ? 1 : 0
+  count      = var.create_proxy ? 1 : 0
   policy_arn = aws_iam_policy.proxy[count.index].arn
-  role = aws_iam_role.proxy[count.index].name
+  role       = aws_iam_role.proxy[count.index].name
 }
 
 resource "aws_security_group" "proxy" {
-  count = var.create_proxy && var.create_security_group ? 1 : 0
+  count       = var.create_proxy && var.create_security_group ? 1 : 0
   name_prefix = "${var.name}-"
   vpc_id      = var.vpc_id
   description = var.security_group_description == "" ? "Control traffic to/from RDS Proxy ${var.name}" : var.security_group_description
@@ -96,57 +96,57 @@ resource "aws_security_group_rule" "cidr_ingress" {
 }
 
 resource "aws_security_group_rule" "sgs_egress" {
-  count = var.create_proxy && var.create_security_group ? 1 : 0
+  count       = var.create_proxy && var.create_security_group ? 1 : 0
   description = "To allowed SGs"
-  type = "egress"
-  from_port = var.engine_family == "POSTGRESQL" ? 5432 : 3306
-  to_port = var.engine_family == "POSTGRESQL" ? 5432 : 3306
-  protocol = "tcp"
+  type        = "egress"
+  from_port   = var.engine_family == "POSTGRESQL" ? 5432 : 3306
+  to_port     = var.engine_family == "POSTGRESQL" ? 5432 : 3306
+  protocol    = "tcp"
 
-  security_group_id = aws_security_group.proxy[count.index].id
+  security_group_id        = aws_security_group.proxy[count.index].id
   source_security_group_id = var.rds_security_group_id
 }
 
 resource "aws_db_proxy" "proxy" {
-  count = var.create_proxy ? 1 : 0
-  name = var.name
-  engine_family = var.engine_family
-  debug_logging = var.debug_logging
-  require_tls = var.require_tls
-  idle_client_timeout = var.idle_client_timeout
-  role_arn = aws_iam_role.proxy[count.index].arn
+  count                  = var.create_proxy ? 1 : 0
+  name                   = var.name
+  engine_family          = var.engine_family
+  debug_logging          = var.debug_logging
+  require_tls            = var.require_tls
+  idle_client_timeout    = var.idle_client_timeout
+  role_arn               = aws_iam_role.proxy[count.index].arn
   vpc_security_group_ids = compact(concat(var.vpc_security_group_ids, aws_security_group.proxy.*.id))
-  vpc_subnet_ids = var.subnets
-  tags = var.tags
+  vpc_subnet_ids         = var.subnets
+  tags                   = var.tags
   dynamic "auth" {
     for_each = var.secret_arns
     content {
       auth_scheme = "SECRETS"
       description = "Proxy ${var.name} access to secret ${auth.value}"
-      iam_auth = var.iam_auth
-      secret_arn = auth.value
+      iam_auth    = var.iam_auth
+      secret_arn  = auth.value
     }
   }
 }
 
 resource "aws_db_proxy_default_target_group" "proxy" {
-  count = var.create_proxy ? 1 : 0
+  count         = var.create_proxy ? 1 : 0
   db_proxy_name = aws_db_proxy.proxy[count.index].name
   connection_pool_config {
-    connection_borrow_timeout = var.connection_borrow_timeout
-    init_query = var.init_query
-    max_connections_percent = var.max_connections_percent
+    connection_borrow_timeout    = var.connection_borrow_timeout
+    init_query                   = var.init_query
+    max_connections_percent      = var.max_connections_percent
     max_idle_connections_percent = var.max_idle_connections_percent
-    session_pinning_filters = var.session_pinning_filters
+    session_pinning_filters      = var.session_pinning_filters
   }
 }
 
 # TODO Creating the proxy errors because the DB is still in a CREATING state, we need to wait for it
 # TODO https://registry.terraform.io/providers/hashicorp/time/latest/docs/resources/sleep
 resource "aws_db_proxy_target" "proxy" {
-  count = var.create_proxy ? 1 : 0
-  db_cluster_identifier = var.db_cluster_identifier
+  count                  = var.create_proxy ? 1 : 0
+  db_cluster_identifier  = var.db_cluster_identifier
   db_instance_identifier = var.db_instance_identifier
-  db_proxy_name = aws_db_proxy.proxy[count.index].name
-  target_group_name = "default"
+  db_proxy_name          = aws_db_proxy.proxy[count.index].name
+  target_group_name      = "default"
 }
